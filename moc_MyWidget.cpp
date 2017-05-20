@@ -1,7 +1,7 @@
 /****************************************************************************
 ** Meta object code from reading C++ file 'MyWidget.h'
 **
-** Created: Fri May 19 15:23:11 2017
+** Created: Sat May 20 17:36:10 2017
 **      by: The Qt Meta Object Compiler version 61 (Qt 4.5.3)
 **
 ** WARNING! All changes made in this file will be lost!
@@ -23,16 +23,23 @@ static const uint qt_meta_data_MyWidget[] = {
        2,       // revision
        0,       // classname
        0,    0, // classinfo
-       0,    0, // methods
+       3,   12, // methods
        0,    0, // properties
        0,    0, // enums/sets
        0,    0, // constructors
+
+ // slots: signature, parameters, type, tag, flags
+      10,    9,    9,    9, 0x0a,
+      48,   33,    9,    9, 0x0a,
+      94,   88,    9,    9, 0x0a,
 
        0        // eod
 };
 
 static const char qt_meta_stringdata_MyWidget[] = {
-    "MyWidget\0"
+    "MyWidget\0\0slot_button_openfile()\0"
+    "listWidgetItem\0slot_iteDoubleClicked(QListWidgetItem*)\0"
+    "index\0slot_tabCloseRequested(int)\0"
 };
 
 const QMetaObject MyWidget::staticMetaObject = {
@@ -58,6 +65,15 @@ int MyWidget::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
     _id = QWidget::qt_metacall(_c, _id, _a);
     if (_id < 0)
         return _id;
+    if (_c == QMetaObject::InvokeMetaMethod) {
+        switch (_id) {
+        case 0: slot_button_openfile(); break;
+        case 1: slot_iteDoubleClicked((*reinterpret_cast< QListWidgetItem*(*)>(_a[1]))); break;
+        case 2: slot_tabCloseRequested((*reinterpret_cast< int(*)>(_a[1]))); break;
+        default: ;
+        }
+        _id -= 3;
+    }
     return _id;
 }
 QT_END_MOC_NAMESPACE
