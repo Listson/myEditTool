@@ -7,6 +7,11 @@ MyWidget::MyWidget(void){
 	listWidget = new QListWidget;
 	listWidget->setMaximumWidth(150);
 	listWidget->setMinimumWidth(150);
+	treeWidget = new QTreeWidget;
+	treeWidget->setColumnCount(1);
+	treeWidget->setHeaderLabel("文件夹");
+	treeWidget->setMaximumWidth(150);
+	treeWidget->setMinimumWidth(150);
 	tabWidget = new QTabWidget;
 	tabWidget->setTabsClosable(true);//设置关闭按钮
 	tabWidget->setMinimumSize(500,500);
@@ -17,6 +22,7 @@ MyWidget::MyWidget(void){
 	layout_v_left->addWidget(button_newfile);
 	layout_v_left->addWidget(button_save);
 	layout_v_left->addWidget(button_saveas);
+	layout_v_left->addWidget(treeWidget);
 	layout_v_left->addWidget(listWidget);
 	layout_v_right->addWidget(tabWidget);
 
@@ -29,11 +35,16 @@ MyWidget::MyWidget(void){
 	connect(button_save, SIGNAL(clicked()), this, SLOT(slot_save()));
 	connect(button_saveas, SIGNAL(clicked()), this, SLOT(slot_saveAs()));
 	connect(tabWidget, SIGNAL(tabCloseRequested(int)), this, SLOT(slot_tabCloseRequested(int)));
-	connect(listWidget, SIGNAL(itemDoubleClicked(QListWidgetItem*)), this, SLOT(slot_iteDoubleClicked(QListWidgetItem*)));
+	connect(listWidget, SIGNAL(itemDoubleClicked(QListWidgetItem*)), this, SLOT(slot_itemDoubleClicked(QListWidgetItem*)));
+	connect(treeWidget, SIGNAL(itemDoubleClicked(QTreeWidgetItem*, int)), this, SLOT(slot_itemDoubleClicked(QTreeWidgetItem*, int)));
 }
 void MyWidget::slot_button_openfile(void){
 	listWidget->clear();
 	dirpath = QFileDialog::getExistingDirectory(this, tr("Open Directory"),"/home",QFileDialog::ShowDirsOnly| QFileDialog::DontResolveSymlinks);
+	rootpath = dirpath;
+	displayFileTree(treeWidget, rootpath);
+}
+void MyWidget::displayFileTree(QTreeWidget *treeWidget, QString &dirpath){
 	QDir dir;
 	dir.cd(dirpath);
 	//QStringList filters;
@@ -42,10 +53,61 @@ void MyWidget::slot_button_openfile(void){
 	for(unsigned int i=0; i<dir.count(); i++){
 		if(dir[i].compare(".")==0 || dir[i].compare("..")==0)
 			continue;
-		listWidget->addItem(dir[i]);
+		QString filepath = dirpath+"/"+dir[i];
+		QFileInfo fileInfo(filepath);
+		if(fileInfo.isFile()){//添加到显示文件的QListWidget
+			listWidget->addItem(dir[i]);
+		}
+		else if(fileInfo.isDir()){
+			QTreeWidgetItem *root = new QTreeWidgetItem(treeWidget, QStringList(QString(dir[i])));
+			//treeWidget->addTopLevelItem(root);
+		}
 	}
 }
-void MyWidget::slot_iteDoubleClicked(QListWidgetItem *listWidgetItem){
+void MyWidget::slot_itemDoubleClicked(QTreeWidgetItem *treeWidgetItem, int column){
+	QString filename = treeWidgetItem->text(0);
+	//QByteArray ba2(filename.toAscii());//toAscii()返回一个QByteArray类型
+	//printf("%s\n", ba2.data());//data()返回char *
+	QString filepath;
+	filepath = filename;
+	QTreeWidgetItem *parent;
+	QTreeWidgetItem *childItem = treeWidgetItem;
+	while(1){
+		parent = childItem->parent();
+		childItem = parent;
+		if(parent==NULL)
+			break;
+		filepath = parent->text(0)+"/"+filepath;
+		QByteArray ba2(filepath.toAscii());
+		printf("%s\n", ba2.data());
+	}
+	filepath = rootpath+"/"+filepath;
+	dirpath.clear();
+	dirpath = filepath;
+	QByteArray ba(filepath.toAscii());//toAscii()返回一个QByteArray类型
+	printf("%s\n", ba.data());//data()返回char *
+	QDir dir;
+	dir.cd(dirpath);
+	//QStringList filters;
+	//filters << "*.cpp" << "*.c" << "*.h"<<".txt";
+	//dir.setNameFilters(filters);
+	listWidget->clear();
+	for(unsigned int i=0; i<dir.count(); i++){
+		if(dir[i].compare(".")==0 || dir[i].compare("..")==0)
+			continue;
+		QString filepath = dirpath+"/"+dir[i];
+		QFileInfo fileInfo(filepath);
+		if(fileInfo.isFile()){//添加到显示文件的QListWidget
+			listWidget->addItem(dir[i]);
+		}
+		else if(fileInfo.isDir()){
+			QTreeWidgetItem *child = new QTreeWidgetItem(treeWidgetItem, QStringList(QString(dir[i])));
+			treeWidgetItem->addChild(child);
+			//treeWidget->addTopLevelItem(root);
+		}
+	}
+}
+void MyWidget::slot_itemDoubleClicked(QListWidgetItem *listWidgetItem){
 	QString filename = listWidgetItem->text();
 	QString filepath;
 	filepath.append(dirpath).append("/").append(filename);
@@ -62,7 +124,25 @@ void MyWidget::slot_iteDoubleClicked(QListWidgetItem *listWidgetItem){
 	int index = tabWidget->addTab(textEdit, filename);
 	tabWidget->setCurrentIndex(index);
 }
+
 void MyWidget::slot_tabCloseRequested(int index){
+	//关闭标签前先检查文件内容是否需要保存
+	if(isNeedToSave(textEdit)){
+		QMessageBox box;
+		box.setWindowTitle("警告");
+		box.setIcon(QMessageBox::Warning);
+		box.setText(" 文件尚未保存，是否保存？");
+		QPushButton *yesBtn = box.addButton("是",
+				QMessageBox::YesRole);
+		box.addButton("否", QMessageBox::NoRole);
+		QPushButton *cancelBut = box.addButton("取消",
+				QMessageBox::RejectRole);
+		box.exec();
+		if (box.clickedButton() == yesBtn)
+			slot_save();
+		else if (box.clickedButton() == cancelBut)
+			return;
+	}
 	//获取标签页对象,用于释放
 	textEdit = (MyTextEdit*)tabWidget->widget(index);
 	//将一个标签从标签栏中移出,切记标签页自己不会清除,需要手动释放
@@ -75,7 +155,7 @@ bool MyWidget::readFile(const QString &filepath, QString &content){
 	QFile file(filepath);
 	if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
 		return false;
-		//QMessageBox ::information(NULL, NULL, "open file error");
+	//QMessageBox ::information(NULL, NULL, "open file error");
 	while (!file.atEnd()) {
 		QByteArray line = file.readLine();
 		content.append(line);
